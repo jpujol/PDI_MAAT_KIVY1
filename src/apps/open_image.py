@@ -1,109 +1,159 @@
+# TID EMC2 group: Multimedia Applications and Terminals
+#
+# Project to load an image, process it and save it
+#
+import kivy
+kivy.require('1.3.0')
 from kivy.app import App
-from kivy.uix.button import Button
+from kivy.logger import Logger
 from kivy.uix.widget import Widget
-from kivy.uix.filechooser import FileChooserListView, FileChooserIconView
+from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.stacklayout import StackLayout
+from kivy.uix.image import Image 
 from kivy.uix.popup import Popup
+from kivy.uix.label import Label
+from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics.vertex_instructions import Rectangle
-from kivy.graphics.context_instructions import Color
-import sys
+from kivy.core.image import Image, ImageData
+from kivy.graphics.texture import Texture
 
+import pygame
+
+# ----------------------------------------------------
+# File selector class
+# ----------------------------------------------------
 class FilePopup(Popup):
     def __init__(self, **kwargs):
         super(FilePopup, self).__init__(**kwargs)
+                
+       # View =  FileChooserListView #FileChooserIconView
         
-        #self.parent = parent
-        View = FileChooserIconView #FileChooserListView
         # create popup layout containing a boxLayout
         content = BoxLayout(orientation='vertical', spacing=5)
-        self.popup = popup = Popup(title=self.title,
-            content=content, size_hint=(None, None), size=(600, 400))
+        #self.popup = popup = Popup(title=self.title,
+        #    content=content, size_hint=(None, None), size=(600, 400))
         
         # first, create the scrollView
-        self.scrollView = scrollView = ScrollView()
+        #self.scrollView = scrollView = ScrollView()
         
         # then, create the fileChooser and integrate it in thebscrollView
         
-        if not 'path' in kwargs:
-            fileChooser = View(size_hint_y=None)
-        else:
-            fileChooser = View(kwargs['path'], size_hint_y=None)
-        fileChooser.height = 400 # this is a bit ugly...
-        scrollView.add_widget(fileChooser)
-        self.fileChooser = fileChooser
+        #if not 'path' in kwargs:
+        #    fileChooser = View(size_hint_y=None)
+        #else:
+        #    fileChooser = View(kwargs['path'], size_hint_y=None)
+        #fileChooser.height = 400 # this is a bit ugly...
+        #scrollView.add_widget(fileChooser)
+        #self.fileChooser = fileChooser
         
         # construct the content, widget are used as a spacer
-        content.add_widget(Widget(size_hint_y=None, height=5))
-        content.add_widget(scrollView)
-        content.add_widget(Widget(size_hint_y=None, height=5))
+        #content.add_widget(Widget(size_hint_y=None, height=5))
+        #content.add_widget(scrollView)
+        #content.add_widget(Widget(size_hint_y=None, height=5))
         
         # 2 buttons are created for accept or cancel the current value
         btnlayout = BoxLayout(size_hint_y=None, height=50, spacing=5)
-        btn = Button(text='Ok')
-        btn.bind(on_release=self._validate)
-        btnlayout.add_widget(btn)
+        okbutton = Button(text='Ok')
+        okbutton.bind(on_release=self._validate)
+        btnlayout.add_widget(okbutton)
         
-        btn = Button(text='Cancel')
-        btn.bind(on_release=popup.dismiss)
-        btnlayout.add_widget(btn)
+        cancelbutton = Button(text='Cancel')
+        cancelbutton.bind(on_release=self.dismiss)
+        btnlayout.add_widget(cancelbutton)
         content.add_widget(btnlayout)
         
-        # all done, open the popup !
-        #popup.open()
-
+        # Add all the stuff to the popup 
+        self.content=content
+                
     def _validate(self, instance):
-        print self.fileChooser.selection # selected file
-        self.popup.dismiss()
-#        self.popup = None
-#        value = self.fileChooser.path # selection path
-#        # if the value was empty, don't change anything.
-#        if value == '':
-#            # do what you would do if the user didn't select any file
-#            return
-#
-#        # do what you would do if the user selected a file.
-#        print 'choosen file: %s' % value
+       
+        self.myfileselection='earth.jpg'
+        self.dismiss()
         
-        image_file = ''
-        if len(self.fileChooser.selection) > 0:
-            image_file = self.fileChooser.selection[0]
-        change_canvas(self.parent, image_file)
-
-
-def change_canvas(widget, image_file):
-    try:
-        widget.canvas.add( Rectangle(source=str(image_file), pos=widget.pos, size=widget.size))
-#        with widget.canvas:
-#            Rectangle(source=str(image_file), pos=widget.pos, size=widget.size)
-        #import ipdb; ipdb.set_trace()
-        for elem in widget.children:
-            elem.canvas.ask_update() #seems not work
-    except Exception,e:
-        print "Error: %s" % e
-
-class FileChooserApp(App):
+def SetImageInWidget(image, widget):
+    
+    #show the image in kivy
+    if image.get_bytesize() == 3:
+        fmt = 'rgb'
+    elif image.get_bytesize() == 4:
+        fmt = 'rgba' 
+    data = pygame.image.tostring(image, fmt.upper(), True)
+    k_im_data = ImageData(image.get_width(), image.get_height(), fmt, data)
+    imageTexture = Texture.create_from_data(k_im_data)
+    widget.canvas.clear()
+    widget.canvas.add(Rectangle(texture=imageTexture, pos=(0, 0), size=(500, 500)))
+    
+        
+# ----------------------------------------------------
+# Main app
+# ----------------------------------------------------
+class PicturesApp(App):
 
     def build(self):
-        parent = Widget()
-        parent.canvas.add(Color(1., 1., 0))
-        parent.canvas.add( Rectangle(pos=parent.pos, size=parent.size))
-        file_pop = FilePopup()     
-        parent.add_widget(file_pop)
+	
+        try:
         
-        browse_btn = Button(text=' Choose \n an image \n file', halighn = 'center')
-        parent.add_widget(browse_btn)
-        
-#        parent.canvas.add(Color(1., 0, 0))
-#        parent.canvas.add( Rectangle(pos=parent.pos, size=parent.size))
-        
-        def launch_browser(obj):
-            print 'lauch browser is called'
-            file_pop.popup.open()
+            # load the image
+            mainGrid = GridLayout(rows=2)
+            buttonsLayout = BoxLayout(orientation='horizontal',size_hint_y=None, height=100);
+
+            # Variables to be used by callbacks
+            rectangleImage1 = Widget()   # where the image is displayed
+            self.imageToBeDisplayed = None # the image itself
+
+           
+            def OnProcessImage(instance):
+                Logger.debug('The process button has been pressed')
+                if self.imageToBeDisplayed is None:
+                    return
+                
+                im = self.imageToBeDisplayed
+                for row in range(0, im.get_height()):
+                    for col in range(0, im.get_width()):
+                    #TODO: check that for rgb images simply a is None
+                        r,g,b,a = im.get_at((col, row))
+                        gs = (r + g + b)/3
+                        im.set_at((col, row), (gs, gs, gs, a))
+                        
+                imageToBeDisplayed = im
+                SetImageInWidget(im, rectangleImage1)
+           
+            def OnImageFileSelected(instance):
+                Logger.info('The image we want to load is... <%s>' % instance.myfileselection)
+                im = self.imageToBeDisplayed = pygame.image.load(instance.myfileselection)
+                SetImageInWidget(im, rectangleImage1)
+                
+            def OnLoadImage(instance):
+                Logger.debug('The load button has been pressed')
+                fileselector = FilePopup()
+                fileselector.bind(on_dismiss=OnImageFileSelected)
+                fileselector.open()
+
+                
+            # Create buttons
+            loadbutton = Button(text='Load image')
+            savebutton = Button(text='Save image')
+            processbutton = Button(text='Process image\n (convert to grayscale)')
             
+            # Add callbacks to buttons
+            loadbutton.bind(on_release=OnLoadImage)
+            processbutton.bind(on_release=OnProcessImage)
+            
+            # Add buttons to buttons container
+            buttonsLayout.add_widget(loadbutton);
+            buttonsLayout.add_widget(savebutton);
+            buttonsLayout.add_widget(processbutton);
+            
+            # add to the main widget
+            mainGrid.add_widget(rectangleImage1)
+            mainGrid.add_widget(buttonsLayout)
+            return mainGrid
+           
+        except Exception, e:
+            Logger.exception('Pictures: Unable to load <%s>' % filename)
 
-        browse_btn.bind(on_release=launch_browser)
-    
-        return parent
-
-FileChooserApp().run()
+if __name__ == '__main__':
+    PicturesApp().run()
