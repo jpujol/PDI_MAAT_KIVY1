@@ -85,8 +85,26 @@ def SetImageInWidget(image, widget):
     k_im_data = ImageData(image.get_width(), image.get_height(), fmt, data)
     imageTexture = Texture.create_from_data(k_im_data)
     widget.canvas.clear()
-    #TODO: Modify size to avoid image distortion
-    widget.canvas.add(Rectangle(texture=imageTexture, pos = widget.pos, size=widget.size))
+    
+    #Modify size and offset to avoid image distortion
+    orig_h = image.get_height()
+    orig_w = image.get_width()
+    wid_h = widget.size[1]
+    wid_w = widget.size[0]
+    s_size = (0,0)
+    offset = (0,0)
+    orig_ratio = float(orig_w)/orig_h
+    wid_ratio = float(wid_w)/wid_h
+
+    if wid_ratio > orig_ratio: #fix height
+        s_size =  (wid_h*orig_ratio, wid_h)
+        offset = ((wid_w - s_size[0])/2, 0)
+    else: #fix width
+        s_size =  (wid_w, wid_w/orig_ratio)
+        offset = (0, (wid_h - s_size[1])/2)
+
+    widget.canvas.add(Rectangle(texture=imageTexture, pos = (widget.pos[0] + offset[0],widget.pos[1]+offset[1]),
+                                 size=s_size))
 
         
 # ----------------------------------------------------
