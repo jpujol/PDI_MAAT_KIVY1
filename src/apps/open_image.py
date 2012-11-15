@@ -11,6 +11,7 @@ from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.stacklayout import StackLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image 
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
@@ -19,6 +20,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.graphics.vertex_instructions import Rectangle
 from kivy.core.image import Image, ImageData
 from kivy.graphics.texture import Texture
+from kivy.uix.textinput import TextInput
 
 import pygame
 
@@ -28,14 +30,14 @@ import pygame
 class FilePopup(Popup):
     def __init__(self, **kwargs):
         super(FilePopup, self).__init__(**kwargs)
-        self.myfileselection = 'earth.jpg' #default image        
+        self.myfileselection = 'earth.jpg' #default image 
+        self.title = "Load Image"     
+       
         View =  FileChooserListView #FileChooserIconView
         
         # create popup layout containing a boxLayout
         content = BoxLayout(orientation='vertical', spacing=5)
-        #self.popup = popup = Popup(title=self.title,
-        #    content=content, size_hint=(None, None), size=(600, 400))
-        
+
         # first, create the scrollView
         self.scrollView = scrollView = ScrollView()
         
@@ -106,6 +108,47 @@ def SetImageInWidget(image, widget):
     widget.canvas.add(Rectangle(texture=imageTexture, pos = (widget.pos[0] + offset[0],widget.pos[1]+offset[1]),
                                  size=s_size))
 
+ 
+class DestinationPopup(Popup):
+    
+    def __init__(self, imageToSave, **kwargs): 
+        self.imageToSave = imageToSave
+        super(DestinationPopup, self).__init__(**kwargs)
+        self.myfileselection = 'earth.jpg' #default image   
+        self.title = "Save Image"     
+        
+        # create popup layout containing a boxLayout
+        text_input = TextInput(text='./DestFileName.jpg') 
+        self.text_input = text_input
+        content = FloatLayout()
+        
+        text_and_buttons_layout = BoxLayout(orientation='vertical',size_hint=(.6, .3),pos_hint={'x':.2, 'y':.5})
+        text_and_buttons_layout.add_widget(text_input)
+        text_and_buttons_layout.add_widget(Widget(size_hint_y=None, size_hint=(1, .2)))
+        
+        # 2 buttons are created for accept or cancel the current value
+        btnlayout = BoxLayout(size_hint_y=None, height=40, spacing=5)
+        okbutton = Button(text='Ok')
+        okbutton.bind(on_release=self._validate)
+        btnlayout.add_widget(okbutton)
+        
+        cancelbutton = Button(text='Cancel')
+        cancelbutton.bind(on_release=self.dismiss)
+        btnlayout.add_widget(cancelbutton)
+        
+        text_and_buttons_layout.add_widget(btnlayout)
+        
+        content.add_widget(text_and_buttons_layout)
+        
+        self.content = content
+        
+    def _validate(self, instance):
+        #import ipdb; ipdb.set_trace()
+        if len(self.text_input.text) > 0:
+            self.myfileselection = self.text_input.text
+            pygame.image.save(self.imageToSave, self.myfileselection)
+        self.dismiss()
+ 
         
 # ----------------------------------------------------
 # Main app
@@ -151,7 +194,14 @@ class PicturesApp(App):
                 fileselector = FilePopup()
                 fileselector.bind(on_dismiss=OnImageFileSelected)
                 fileselector.open()
-
+            
+            def OnSaveImage(instance):
+                Logger.debug('The Save button has been pressed')
+                if self.imageToBeDisplayed is None:
+                    return
+                fileselector = DestinationPopup(self.imageToBeDisplayed, size=(400,100))
+                fileselector.open()
+            
                 
             # Create buttons
             loadbutton = Button(text='Load image')
@@ -161,6 +211,7 @@ class PicturesApp(App):
             # Add callbacks to buttons
             loadbutton.bind(on_release=OnLoadImage)
             processbutton.bind(on_release=OnProcessImage)
+            savebutton.bind(on_release=OnSaveImage)
             
             # Add buttons to buttons container
             buttonsLayout.add_widget(loadbutton);
