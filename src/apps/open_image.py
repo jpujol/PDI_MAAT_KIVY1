@@ -30,7 +30,8 @@ import pygame
 class FilePopup(Popup):
     def __init__(self, **kwargs):
         super(FilePopup, self).__init__(**kwargs)
-        self.myfileselection = 'earth.jpg' #default image 
+        #self.myfileselection = 'earth.jpg' #default image 
+        self.myfileselection = None #default image 
         self.title = "Load Image"     
        
         View =  FileChooserListView #FileChooserIconView
@@ -71,7 +72,6 @@ class FilePopup(Popup):
         self.content=content
                 
     def _validate(self, instance):
-       
         if len(self.fileChooser.selection) > 0:
             self.myfileselection = self.fileChooser.selection[0]
         self.dismiss()
@@ -111,11 +111,10 @@ def SetImageInWidget(image, widget):
  
 class DestinationPopup(Popup):
     
-    def __init__(self, imageToSave, **kwargs): 
-        self.imageToSave = imageToSave
+    def __init__(self, **kwargs): 
+        self.imageToSave = None
         super(DestinationPopup, self).__init__(**kwargs)
-        self.myfileselection = 'earth.jpg' #default image   
-        self.title = "Save Image"     
+        self.title = "Save Image" 
         
         # create popup layout containing a boxLayout
         text_input = TextInput(text='./DestFileName.jpg') 
@@ -133,7 +132,7 @@ class DestinationPopup(Popup):
         btnlayout.add_widget(okbutton)
         
         cancelbutton = Button(text='Cancel')
-        cancelbutton.bind(on_release=self.dismiss)
+        cancelbutton.bind(on_release=self.cancel)
         btnlayout.add_widget(cancelbutton)
         
         text_and_buttons_layout.add_widget(btnlayout)
@@ -146,7 +145,10 @@ class DestinationPopup(Popup):
         #import ipdb; ipdb.set_trace()
         if len(self.text_input.text) > 0:
             self.myfileselection = self.text_input.text
-            pygame.image.save(self.imageToSave, self.myfileselection)
+        self.dismiss()
+    
+    def cancel(self, instance):
+        self.myfileselection = None
         self.dismiss()
  
         
@@ -158,17 +160,32 @@ class PicturesApp(App):
     def build(self):
 	
         try:
+
         
-            # load the image
-            mainGrid = GridLayout(rows=2)
-            buttonsLayout = BoxLayout(orientation='horizontal',size_hint_y=None, height=100);
-
-            # Variables to be used by callbacks
-            rectangleImage1 = Widget()   # where the image is displayed
-            self.imageToBeDisplayed = None # the image itself
-
-           
-            def OnProcessImage(instance):
+# Callbacks from file name selection
+            def OnImageToLoadFileSelected(instance):
+                Logger.info('The image we want to load is... <%s>' % instance.myfileselection)
+                if instance.myfileselection is not None:
+                    im = self.imageToBeDisplayed = pygame.image.load(instance.myfileselection)
+                    SetImageInWidget(im, rectangleImage1)
+                    
+            def OnImageToSaveFileSelected(instance):
+                Logger.info('The image we want to save is... <%s>' % instance.myfileselection)
+                if instance.myfileselection is not None:
+                    pygame.image.save(self.imageToBeDisplayed, instance.myfileselection)
+            
+# Callback for buttons            
+            def OnLoadImageButtonPressed(instance):
+                Logger.debug('The load button has been pressed')
+                self.fileLoader.open()
+            
+            def OnSaveImageButtonPressed(instance):
+                Logger.debug('The Save button has been pressed')
+                if self.imageToBeDisplayed is None:
+                    return
+                self.fileSaver.open()
+                
+            def OnProcessImageButtonPressed(instance):
                 Logger.debug('The process button has been pressed')
                 if self.imageToBeDisplayed is None:
                     return
@@ -183,25 +200,20 @@ class PicturesApp(App):
                         
                 imageToBeDisplayed = im
                 SetImageInWidget(im, rectangleImage1)
-           
-            def OnImageFileSelected(instance):
-                Logger.info('The image we want to load is... <%s>' % instance.myfileselection)
-                im = self.imageToBeDisplayed = pygame.image.load(instance.myfileselection)
-                SetImageInWidget(im, rectangleImage1)
-                
-            def OnLoadImage(instance):
-                Logger.debug('The load button has been pressed')
-                fileselector = FilePopup()
-                fileselector.bind(on_dismiss=OnImageFileSelected)
-                fileselector.open()
-            
-            def OnSaveImage(instance):
-                Logger.debug('The Save button has been pressed')
-                if self.imageToBeDisplayed is None:
-                    return
-                fileselector = DestinationPopup(self.imageToBeDisplayed, size=(400,100))
-                fileselector.open()
-            
+        
+            # load the image
+            mainGrid = GridLayout(rows=2)
+            buttonsLayout = BoxLayout(orientation='horizontal',size_hint_y=None, height=100);
+
+            # Variables to be used by callbacks
+            rectangleImage1 = Widget()   # where the image is displayed
+            self.imageToBeDisplayed = None # the image itself
+
+            # Dialogs to open and save images
+            self.fileLoader = FilePopup()
+            self.fileLoader.bind(on_dismiss=OnImageToLoadFileSelected)
+            self.fileSaver = DestinationPopup()
+            self.fileSaver.bind(on_dismiss=OnImageToSaveFileSelected)
                 
             # Create buttons
             loadbutton = Button(text='Load image')
@@ -209,9 +221,9 @@ class PicturesApp(App):
             processbutton = Button(text='Process image\n (convert to grayscale)')
             
             # Add callbacks to buttons
-            loadbutton.bind(on_release=OnLoadImage)
-            processbutton.bind(on_release=OnProcessImage)
-            savebutton.bind(on_release=OnSaveImage)
+            loadbutton.bind(on_release=OnLoadImageButtonPressed)
+            processbutton.bind(on_release=OnProcessImageButtonPressed)
+            savebutton.bind(on_release=OnSaveImageButtonPressed)
             
             # Add buttons to buttons container
             buttonsLayout.add_widget(loadbutton);
@@ -224,7 +236,7 @@ class PicturesApp(App):
             return mainGrid
            
         except Exception, e:
-            Logger.exception('Pictures: Unable to load <%s>' % filename)
+            Logger.exception('There was an error: %s' % e)
 
 if __name__ == '__main__':
     PicturesApp().run()
