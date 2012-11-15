@@ -28,8 +28,8 @@ import pygame
 class FilePopup(Popup):
     def __init__(self, **kwargs):
         super(FilePopup, self).__init__(**kwargs)
-                
-       # View =  FileChooserListView #FileChooserIconView
+        self.myfileselection = 'earth.jpg' #default image        
+        View =  FileChooserListView #FileChooserIconView
         
         # create popup layout containing a boxLayout
         content = BoxLayout(orientation='vertical', spacing=5)
@@ -37,22 +37,22 @@ class FilePopup(Popup):
         #    content=content, size_hint=(None, None), size=(600, 400))
         
         # first, create the scrollView
-        #self.scrollView = scrollView = ScrollView()
+        self.scrollView = scrollView = ScrollView()
         
         # then, create the fileChooser and integrate it in thebscrollView
         
-        #if not 'path' in kwargs:
-        #    fileChooser = View(size_hint_y=None)
-        #else:
-        #    fileChooser = View(kwargs['path'], size_hint_y=None)
-        #fileChooser.height = 400 # this is a bit ugly...
-        #scrollView.add_widget(fileChooser)
-        #self.fileChooser = fileChooser
+        if not 'path' in kwargs:
+            fileChooser = View(size_hint_y=None)
+        else:
+            fileChooser = View(kwargs['path'], size_hint_y=None)
+        fileChooser.height = 400 # this is a bit ugly...
+        scrollView.add_widget(fileChooser)
+        self.fileChooser = fileChooser
         
         # construct the content, widget are used as a spacer
-        #content.add_widget(Widget(size_hint_y=None, height=5))
-        #content.add_widget(scrollView)
-        #content.add_widget(Widget(size_hint_y=None, height=5))
+        content.add_widget(Widget(size_hint_y=None, height=5))
+        content.add_widget(scrollView)
+        content.add_widget(Widget(size_hint_y=None, height=5))
         
         # 2 buttons are created for accept or cancel the current value
         btnlayout = BoxLayout(size_hint_y=None, height=50, spacing=5)
@@ -70,7 +70,8 @@ class FilePopup(Popup):
                 
     def _validate(self, instance):
        
-        self.myfileselection='earth.jpg'
+        if len(self.fileChooser.selection) > 0:
+            self.myfileselection = self.fileChooser.selection[0]
         self.dismiss()
         
 def SetImageInWidget(image, widget):
@@ -84,8 +85,9 @@ def SetImageInWidget(image, widget):
     k_im_data = ImageData(image.get_width(), image.get_height(), fmt, data)
     imageTexture = Texture.create_from_data(k_im_data)
     widget.canvas.clear()
-    widget.canvas.add(Rectangle(texture=imageTexture, pos=(0, 0), size=(500, 500)))
-    
+    #TODO: Modify size to avoid image distortion
+    widget.canvas.add(Rectangle(texture=imageTexture, pos = widget.pos, size=widget.size))
+
         
 # ----------------------------------------------------
 # Main app
