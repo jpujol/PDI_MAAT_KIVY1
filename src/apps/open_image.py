@@ -344,5 +344,7 @@ class PicturesApp(App):
         except Exception, e:
             Logger.exception('There was an error: %s' % e)
 
-if __name__ == '__main__':
+if __name__ in ( '__main__', '__android__'):
+    # disable multitouch emulation for mouse (to avoid leaving "traces")
+    kivy.config.Config.set ( 'input', 'mouse', 'mouse,disable_multitouch' )
     PicturesApp().run()
