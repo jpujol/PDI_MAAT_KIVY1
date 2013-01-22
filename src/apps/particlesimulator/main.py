@@ -43,6 +43,7 @@ class Particle:
         self.mass=mass
         self.pos=pos
         self.vel=vel
+        self.radius=5
 
     def __str__(self):
         return "Mass:%s, pos:%s, vel:%s" % (self.mass,str(self.pos), str(self.vel))
@@ -54,6 +55,11 @@ class ParticleSystem(Widget):
         self.iteration=1
         self.delta_time=0.01;
         self.particleList=[]
+        # This will be the radius for the most massive particle in the list
+        # All others will be relative to it, depending on their mass ratio
+        self.max_radius = 20
+        # The flattening applied to particles (considered as ellipsoids)
+        self.flattening = 1.0/15.0      # flattening of Jupiter
     
     def update_particles(self):
 
@@ -109,10 +115,10 @@ class ParticleSystem(Widget):
         self.canvas.clear()
         for particle in self.particleList:
            screen_coords=self.convert_particle_coordinates_to_screen_coordinates(particle)
-           self.canvas.add(Ellipse(pos=(screen_coords[0],screen_coords[1]), size=(5,5)))
+           self.canvas.add(Ellipse(pos=(screen_coords[0],screen_coords[1]), 
+                                   size=(particle.radius,particle.radius*(1-self.flattening))))
            
         self.canvas.ask_update()
-        
         
         
     
@@ -125,10 +131,21 @@ class ParticleSystem(Widget):
         # Important update! dont remove
         self.iteration+=1
 
-        
+    def recompute_radii(self):
+        # Compute particle density so that the particle with the maximum mass
+        # has a radius equal to max_radius
+        k = 4.0/3.0*math.pi
+        mass_max  = max( [ p.mass for p in self.particleList ] )
+        density = mass_max/k/(self.max_radius**3.0)
+        # Now update all radii so that they reflect the particle mass
+        for p in self.particleList:
+            radius = math.pow( p.mass/density/k, 1.0/3.0 )
+            p.radius = round( max( [radius,1] ) )
+
         
     def add_particle(self, mass, pos, vel):
         self.particleList.append(Particle(mass, pos, vel))
+        self.recompute_radii()
     #    self.canvas.add(Ellipse(pos=(1,1), size=(3,3)))
         
       
