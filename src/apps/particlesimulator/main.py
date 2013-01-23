@@ -13,6 +13,17 @@ import math
 import random
 
 
+# The Accent8 paletter from the Brewer qualitative color schemes
+Accent8 = [
+    [127,201,127],
+    [190,174,212],
+    [253,192,134],
+    [255,255,153],
+    [56,108,176],
+    [240,2,127],
+    [191,91,23],
+    [102,102,102] ]
+
 
 class Vector2D:
     def __init__(self, x, y):
@@ -60,7 +71,11 @@ class ParticleSystem(Widget):
         self.max_radius = 20
         # The flattening applied to particles (considered as ellipsoids)
         self.flattening = 1.0/15.0      # flattening of Jupiter
-    
+        # Define the colors we'll user for the particles
+        self.colors = Accent8
+        for n,c in enumerate(self.colors):
+            self.colors[n] = map( lambda x : x/255.0, c )
+
     def update_particles(self):
 
        # for particle in self.particleList:
@@ -113,10 +128,13 @@ class ParticleSystem(Widget):
             
     def draw_particles(self):
         self.canvas.clear()
-        for particle in self.particleList:
-           screen_coords=self.convert_particle_coordinates_to_screen_coordinates(particle)
-           self.canvas.add(Ellipse(pos=(screen_coords[0],screen_coords[1]), 
-                                   size=(particle.radius,particle.radius*(1-self.flattening))))
+        with self.canvas:
+            for i,particle in enumerate(self.particleList):
+                screen_coords=self.convert_particle_coordinates_to_screen_coordinates(particle)
+                Color( *self.colors[i%8] )
+                Ellipse( pos=(screen_coords[0],screen_coords[1]), 
+                         size=(particle.radius,
+                               particle.radius*(1-self.flattening)) )
            
         self.canvas.ask_update()
         
