@@ -44,6 +44,9 @@ class Vector2D:
     def __rmul__(self, other):
         return self * other
         
+    def __neg__(self):
+        return Vector2D(-self.x, -self.y)
+        
     def __str__(self):
         return "x:%s, y:%s" % (self.x,self.y)
         
@@ -81,39 +84,63 @@ class ParticleSystem(Widget):
        # for particle in self.particleList:
        #     Logger.debug(str(particle))
         
-        accelerationList = []
+        
+        
+        # Let's make it as real as possible!
+#        G=6.674*0.00000000001
         G=2
         
-        # Compute acceleration for each particle
+        numberParticles=len(self.particleList)
+
+        # Nomenclature:
         # Note: ru = unit vector
         # vec(x) = x is a vector
-        # vec(F)=G M0 M1 / r_01^2 * vec(ru_01) + G M0 M2 / r_02^2 * vec(ru_02) + ... G M0 Mn / r_0n^2 * vec(ru_0n) 
-        # -> vec(a) = vec(F)/M0 -> vec(a) = G * (M1/r_01^2 * vec(ru_01)+ ... + Mn / r_0n^2 * vec(ru_0n)) 
-        for particle in self.particleList:
-                   
-            accel = Vector2D(0,0)
-            for particle_temp in self.particleList:
-                if (particle != particle_temp):
-                     distanceVector = particle_temp.pos - particle.pos
+        
+        # Compute the one to one force for each particle!
+        # We are going to use the fact that vec(Fnm) = - vec(Fmn),
+        # so we are going to compute a triangle matrix and then replicate the result
+        force2dArray =[[ Vector(0,0) for i in range(numberParticles) ] for j in range(numberParticles)]
+        for idx1,particle1 in enumerate(self.particleList):
+            for idx2, particle2 in enumerate(self.particleList):
+                if (idx1 < idx2): # Compute the force
+                     distanceVector = particle2.pos - particle1.pos
                      distanceModule2 = (distanceVector.x*distanceVector.x + distanceVector.y*distanceVector.y)
                      if (distanceModule2 == 0):
                          distanceModule2 = 0.0001
                      
                      distanceUnitVector = distanceVector/math.sqrt(distanceModule2)
-                    # Logger.debug("unit vector" + str(distanceUnitVector))
+                     forceVector = G *( particle1.mass*particle2.mass / distanceModule2) * distanceUnitVector
                      
-                     accel += (particle_temp.mass/ distanceModule2) * distanceUnitVector
-                     #accel += particle_temp /
+                     force2dArray[idx1][idx2] = forceVector
+                     
+                
+                elif (idx1 > idx2): # Copy the value from [idx2, idx1] and set the opposite
+                     force2dArray[idx1][idx2] = -force2dArray[idx2][idx1]
+                
+                # if (idx1==idx2) Do nothing
+        
+        # Compute the total force for each particle
+        forceList = []
+        for particleIdx in range(numberParticles):
+                   
+            force = Vector2D(0,0)
+            # Add all the elements in force2dArray[idx][0..end-1, except idx].
+            # But [idx][idx]= (0,0), so sum all :)
+            for forceIdx in range(numberParticles):
+                force += force2dArray[particleIdx][forceIdx];
+                
+            forceList.append(force)  
             
-            accel *= G            
-            #Logger.debug(str(accel))
-            accelerationList.append(accel)
+        # Compute accel for each particle: F/m = a
+        accelerationList = []
+        for idx,particle in enumerate(self.particleList):
+            accelerationList.append(forceList[idx]/particle.mass)
+        
         
         # Update velocity: a= dv/dt -> v_(n+1) = v_n + a * delta_time
-        index=0
-        for particle in self.particleList:
-            particle.vel += self.delta_time * accelerationList[index]
-            index+=1;
+        for idx,particle in enumerate(self.particleList):
+            particle.vel += self.delta_time * accelerationList[idx]
+        
             
         # Update position: v= ds/dt -> s_(n+1) = s_n + v * delta_time
         for particle in self.particleList:
@@ -141,7 +168,9 @@ class ParticleSystem(Widget):
         
     
     def update(self, *args):
-        Logger.info('Loop' + str(self.iteration))
+        
+        if (self.iteration % 10 == 0):
+            Logger.info('Loop' + str(self.iteration))
      
         self.update_particles()
         self.draw_particles()
@@ -175,10 +204,10 @@ class ParticleSystemApp(App):
         
         acum_momentum = Vector2D(0,0)
         
-        for x in range(0, 2):
+        for x in range(0, 4):
             mass=random.randrange(10, 15)
             pos_mod=random.randrange(30,80)/10.0;
-            pos_angle=random.randrange(0,360)/180.0*3.14159
+            pos_angle=random.randrange(0,360)/180.0*math.pi
             pos=Vector2D(pos_mod*math.cos(pos_angle),pos_mod*math.sin(pos_angle))
             vel = Vector2D(-pos.y, pos.x);
             vel= 5*vel/math.sqrt(vel.x*vel.x+vel.y*vel.y)
