@@ -57,14 +57,14 @@ class Particle:
     def __init__(self, mass, pos, vel):
         self.mass = mass
         self.pos = pos
-        self.posTemp = pos
+        self.posNext = pos
         self.vel = vel
         self.density = 1
         #self.radius = math.pow(3*mass/(4*math.pi*self.density),1.0/3.0)
-        self.radius = 1
+        self.radius = 0.5
 
     def __str__(self):
-        return "Mass:%s, pos:%s, vel:%s, radius:%s, next pos:%s" % (self.mass, str(self.pos), str(self.vel), str(self.radius), str(self.posTemp))
+        return "Mass:%s, pos:%s, vel:%s, radius:%s, next pos:%s" % (self.mass, str(self.pos), str(self.vel), str(self.radius), str(self.posNext))
 
 
 class ParticleSystem(Widget):
@@ -73,6 +73,7 @@ class ParticleSystem(Widget):
         self.iteration = 1
         self.delta_time = 0.01;
         self.particleList = []
+        self.particle_viewport = [-10.0, 10.0, -10.0, 10.0]; # xmin, xmax, ymin, ymax
 
                 
         # Define the colors we'll user for the particles
@@ -92,27 +93,56 @@ class ParticleSystem(Widget):
     # B = 2(x20-x10)(-x20+x21+x10-x11) + 2(y20-y10)(-y20+y21+y10-y11)
     # A = (-x20+x21+x10-x11)^2+(-y20+y21+y10-y11)^2
     # particle.pos = x?0
-    # particle.posTemp = x?1
+    # particle.posNext = x?1
     def test_collision(self, particle1, particle2):
        # Logger.debug('particle 1' + str(particle1));
        # Logger.debug('particle 2' + str(particle2));
+        Logger.debug("particle1 x=%.3f, xNext=%.3f, radius=%.3f", particle1.pos.x, particle1.posNext.x, particle1.radius)
+        Logger.debug("particle2 x=%.3f, xNext=%.3f, radius=%.3f", particle2.pos.x, particle2.posNext.x, particle2.radius)
         Cp = math.pow(particle2.pos.x - particle1.pos.x,2) + math.pow(particle2.pos.y - particle1.pos.y,2);
-        B = 2 * (particle2.pos.x - particle1.pos.x)*(-particle2.pos.x+particle2.posTemp.x+particle1.pos.x-particle1.posTemp.x)\
-          + 2 * (particle2.pos.y - particle1.pos.y)*(-particle2.pos.y+particle2.posTemp.y+particle1.pos.y-particle1.posTemp.y)
-        A = math.pow(-particle2.pos.x+particle2.posTemp.x+particle1.pos.x-particle1.posTemp.x,2) +\
-            math.pow(-particle2.pos.y+particle2.posTemp.y-particle1.pos.y-particle1.posTemp.y,2)
+        B = 2 * (particle2.pos.x - particle1.pos.x)*(-particle2.pos.x+particle2.posNext.x+particle1.pos.x-particle1.posNext.x)\
+          + 2 * (particle2.pos.y - particle1.pos.y)*(-particle2.pos.y+particle2.posNext.y+particle1.pos.y-particle1.posNext.y)
+        A = math.pow(-particle2.pos.x+particle2.posNext.x+particle1.pos.x-particle1.posNext.x,2) +\
+            math.pow(-particle2.pos.y+particle2.posNext.y-particle1.pos.y-particle1.posNext.y,2)
         C = Cp-math.pow(particle1.radius + particle2.radius,2)
         discriminant = B*B-4*A*C
         if (discriminant < 0):
+            Logger.debug("Discriminant is negative. No solution and thus, no collision")
             return False
         if (A == 0):
-            return False
+            Logger.debug("Second grade coef is zero")
+            Logger.debug("B should be zero, too. B= %.3f", B)
+            if (C < 0):
+                Logger.debug("Collision")
+                return True
+            else:
+                return False
+                
         root1 = (-B + math.sqrt(discriminant))/(2*A)
         root2 = (-B - math.sqrt(discriminant))/(2*A)
-        Logger.debug('root1, root2 ' + str(root1) + ' ' + str(root2))
-        # Condition
-        # x E [0,1] && ( ((x>R1) && (x<R2)) || (x<R1) && (x>R2)
         
+		# Order root solution: root1 < root2
+        if (root1>root2):
+            rootTemp = root2
+            root2=root1
+            root1=rootTemp
+            
+
+        	
+        Logger.debug("A=%.3f, B=%.3f, C=%.3fs, root1=%.3f, root2=%.3f ", A, B, C, root1, root2)
+        # Condition: x E [0,1] && ( ((x>R1) && (x<R2)) || (x<R1) && (x>R2)
+		# The second case cannot happen, so the prior condition becomes
+        # x E [0,1] && ((x>R1) && (x<R2))
+        if ((0 < root1 and 1 > root2) or
+            (0 > root1  and 1 < root2) or
+            (root1 < 1 < root2) or
+            (root1 < 0 < root2)):
+            Logger.debug("Collision")
+            return True
+        else:
+            return False
+           
+		
         return False        
     
     def update_particles(self):
@@ -181,7 +211,7 @@ class ParticleSystem(Widget):
         # Compute possible update for position: dont do it directly, because we have
         # need to test the collition first        
         for particle in self.particleList:
-            particle.posTemp = particle.pos + self.delta_time * particle.vel
+            particle.posNext = particle.pos + self.delta_time * particle.vel
 
         # COLLITION TEST
         # For circles
@@ -193,34 +223,51 @@ class ParticleSystem(Widget):
                  
         
         
-
+        # DEBUG: DO THIS AFTER PAINTING
         # Update position: v= ds/dt -> s_(n+1) = s_n + v * delta_time
-        for particle in self.particleList:
-            particle.pos = particle.posTemp
+       # for particle in self.particleList:
+       #     particle.pos = particle.posNext
 
+    def convert_x_particle_coordinates_to_screen_coordinates(self, x):
+        screen_coord_x = float(self.size[0]) * (x - self.particle_viewport[0]) / (self.particle_viewport[1] - self.particle_viewport[0]) 
+        return screen_coord_x
 
+    def convert_y_particle_coordinates_to_screen_coordinates(self, y):
+        screen_coord_y = float(self.size[1]) * (y - self.particle_viewport[2]) / (self.particle_viewport[3] - self.particle_viewport[2]) 
+        return screen_coord_y
+			
+	
     def convert_particle_coordinates_to_screen_coordinates(self, particle):
-        # Virtual world coords: -10..10 x -10 .. 10
-        screen_coord_x = (self.size[0] - 0) / (10 - (-10)) * (particle.pos.x - (-10)) + 0
-        screen_coord_y = (self.size[1] - 0) / (10 - (-10)) * (particle.pos.y - (-10)) + 0
-        screen_zero =    (self.size[0] - 0) / (10 - (-10)) * (0 - (-10)) + 0 
-        screen_radius =  (self.size[0] - 0) / (10 - (-10)) * (particle.radius - (-10)) + 0
-        return [screen_coord_x, screen_coord_y, screen_radius-screen_zero]
-
-    def convert_screen_coordinates_to_particle_coordinates(self, screen):
-        # Virtual world coords: -10..10 x -10 .. 10
-        particle_coord_x = (screen.x - self.pos[0]) * float((10 - (-10)) / float(self.size[0])) + (-10)
-        particle_coord_y = (screen.y - self.pos[1]) * float((10 - (-10)) / float(self.size[1])) + (-10)
-        return [particle_coord_x, particle_coord_y]
+        # Virtual world coords: in particle_viewport
+        screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(particle.pos.x)
+        screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(particle.pos.y)
+        screen_zero_x =  self.convert_x_particle_coordinates_to_screen_coordinates(0)
+        screen_radius_x =  self.convert_x_particle_coordinates_to_screen_coordinates(particle.radius)
+        screen_zero_y =  self.convert_y_particle_coordinates_to_screen_coordinates(0)
+        screen_radius_y =  self.convert_y_particle_coordinates_to_screen_coordinates(particle.radius)
+        
+        return [screen_coord_x, screen_coord_y, screen_radius_x-screen_zero_x, screen_radius_y - screen_zero_y]
 
     def draw_particles(self):
         self.canvas.clear()
         with self.canvas:
+		    # Draw axis
+            for i in range(int(self.particle_viewport[0]),int(self.particle_viewport[1])):
+                screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(i)
+                screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(0)
+                Color(*[255,0,0])
+                Ellipse(pos=(screen_coord_x, screen_coord_y), size=(2, 2))
+            for i in range(int(self.particle_viewport[2]),int(self.particle_viewport[3])):
+                screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(0)
+                screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(i)
+                Color(*[0,255,0])
+                Ellipse(pos=(screen_coord_x, screen_coord_y), size=(2, 2))
+		
+		    # Draw particles
             for i, particle in enumerate(self.particleList):
                 screen_coords = self.convert_particle_coordinates_to_screen_coordinates(particle)
-                
                 Color(*self.colors[i % 8])
-                Ellipse(pos=(screen_coords[0], screen_coords[1]), size=(screen_coords[2], screen_coords[2]))
+                Ellipse(pos=(screen_coords[0]-screen_coords[2], screen_coords[1]-screen_coords[3]), size=(2*screen_coords[2], 2*screen_coords[3]))
        
         self.canvas.ask_update()
 
@@ -236,6 +283,12 @@ class ParticleSystem(Widget):
 
         self.update_particles()
         self.draw_particles()
+		
+		# Temp code! this comes from the update_particles funcion. Here so we can draw the temporal state
+		# to debug the collision detection
+		# Update position: v= ds/dt -> s_(n+1) = s_n + v * delta_time
+        for particle in self.particleList:
+            particle.pos = particle.posNext
 
         # Important update! dont remove
         self.iteration += 1
@@ -257,7 +310,7 @@ class ParticleSystemApp(App):
         particlesystem.add_particle(5,Vector2D(5,0),Vector2D(-190,0));
         
         #Clock.schedule_interval(particlesystem.update, 1.0 / 60.0)
-        Clock.schedule_interval(particlesystem.update, 1.0)
+        Clock.schedule_interval(particlesystem.update, 5.0)
         return particlesystem
 
 
