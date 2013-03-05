@@ -70,11 +70,12 @@ class ParticleSystem(Widget):
         self.iteration = 1
         self.delta_time = 0.01;
         self.particleList = []
+        self.particle_viewport = [-10.0, 10.0, -10.0, 10.0]; # xmin, xmax, ymin, ymax
+        
         # This will be the radius for the most massive particle in the list
         # All others will be relative to it, depending on their mass ratio
         self.max_radius = 20
-        # The flattening applied to particles (considered as ellipsoids)
-        self.flattening = 1.0 / 15.0  # flattening of Jupiter
+        
         # Define the colors we'll user for the particles
         self.pause = False
         self.touch_center = None
@@ -151,16 +152,29 @@ class ParticleSystem(Widget):
             particle.pos += self.delta_time * particle.vel
 
 
+    def convert_x_particle_coordinates_to_screen_coordinates(self, x):
+        screen_coord_x = float(self.size[0]) * (x - self.particle_viewport[0]) / (self.particle_viewport[1] - self.particle_viewport[0]) 
+        return screen_coord_x
+
+    def convert_y_particle_coordinates_to_screen_coordinates(self, y):
+        screen_coord_y = float(self.size[1]) * (y - self.particle_viewport[2]) / (self.particle_viewport[3] - self.particle_viewport[2]) 
+        return screen_coord_y
+			
+	
     def convert_particle_coordinates_to_screen_coordinates(self, particle):
-        # Virtual world coords: -10..10 x -10 .. 10
-        screen_coord_x = (self.size[0] - 0) / (10 - (-10)) * (particle.pos.x - (-10)) + 0
-        screen_coord_y = (self.size[1] - 0) / (10 - (-10)) * (particle.pos.y - (-10)) + 0
+        # Virtual world coords: in particle_viewport
+        screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(particle.pos.x)
+        screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(particle.pos.y)
         return [screen_coord_x, screen_coord_y]
 
     def convert_screen_coordinates_to_particle_coordinates(self, screen):
         # Virtual world coords: -10..10 x -10 .. 10
-        particle_coord_x = (screen.x - self.pos[0]) * float((10 - (-10)) / float(self.size[0])) + (-10)
-        particle_coord_y = (screen.y - self.pos[1]) * float((10 - (-10)) / float(self.size[1])) + (-10)
+        xmin=self.particle_viewport[0]
+        xmax=self.particle_viewport[1]
+        ymin=self.particle_viewport[2]
+        ymax=self.particle_viewport[3]
+        particle_coord_x = (screen.x - self.pos[0]) * float((xmax - xmin) / float(self.size[0])) + xmin
+        particle_coord_y = (screen.y - self.pos[1]) * float((ymax - ymin) / float(self.size[1])) + ymin
         return [particle_coord_x, particle_coord_y]
 
     def draw_particles(self):
@@ -169,9 +183,8 @@ class ParticleSystem(Widget):
             for i, particle in enumerate(self.particleList):
                 screen_coords = self.convert_particle_coordinates_to_screen_coordinates(particle)
                 Color(*self.colors[i % 8])
-                Ellipse(pos=(screen_coords[0], screen_coords[1]),
-                         size=(particle.radius,
-                               particle.radius * (1 - self.flattening)))
+                Ellipse(pos=(screen_coords[0]-particle.radius, screen_coords[1]-particle.radius),
+                         size=(2*particle.radius, 2*particle.radius))
 
         self.canvas.ask_update()
 
