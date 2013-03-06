@@ -188,6 +188,21 @@ class ParticleSystem(Widget):
     def draw_particles(self):
         self.canvas.clear()
         with self.canvas:
+        
+        # Debug purposes: draw axis
+        # Draw axis
+            for i in range(int(self.particle_viewport[0]),int(self.particle_viewport[1])):
+                screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(i)
+                screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(0)
+                Color(*[255,0,0])
+                Ellipse(pos=(screen_coord_x, screen_coord_y), size=(2, 2))
+            for i in range(int(self.particle_viewport[2]),int(self.particle_viewport[3])):
+                screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(0)
+                screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(i)
+                Color(*[0,255,0])
+                Ellipse(pos=(screen_coord_x, screen_coord_y), size=(2, 2))
+        
+        # Draw particles
             for i, particle in enumerate(self.particleList):
                 screen_coords = self.convert_particle_coordinates_to_screen_coordinates(particle)
                 Color(*particle.color)
