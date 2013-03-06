@@ -54,11 +54,12 @@ class Vector2D:
 
 
 class Particle:
-    def __init__(self, mass, pos, vel):
+    def __init__(self, mass, pos, vel, color):
         self.mass = mass
         self.pos = pos
         self.vel = vel
-        self.radius = 5
+        self.radius = 0.5
+        self.color = color
 
     def __str__(self):
         return "Mass:%s, pos:%s, vel:%s" % (self.mass, str(self.pos), str(self.vel))
@@ -74,7 +75,7 @@ class ParticleSystem(Widget):
         
         # This will be the radius for the most massive particle in the list
         # All others will be relative to it, depending on their mass ratio
-        self.max_radius = 20
+        self.max_radius = 0.5
         
         # Define the colors we'll user for the particles
         self.pause = False
@@ -165,7 +166,14 @@ class ParticleSystem(Widget):
         # Virtual world coords: in particle_viewport
         screen_coord_x = self.convert_x_particle_coordinates_to_screen_coordinates(particle.pos.x)
         screen_coord_y = self.convert_y_particle_coordinates_to_screen_coordinates(particle.pos.y)
-        return [screen_coord_x, screen_coord_y]
+        screen_zero_x =  self.convert_x_particle_coordinates_to_screen_coordinates(0)
+        screen_radius_x =  self.convert_x_particle_coordinates_to_screen_coordinates(particle.radius)
+        screen_zero_y =  self.convert_y_particle_coordinates_to_screen_coordinates(0)
+        screen_radius_y =  self.convert_y_particle_coordinates_to_screen_coordinates(particle.radius)
+        rad_x = screen_radius_x - screen_zero_x
+        rad_y = screen_radius_y - screen_zero_y
+        
+        return [screen_coord_x, screen_coord_y, rad_x, rad_y]
 
     def convert_screen_coordinates_to_particle_coordinates(self, screen):
         # Virtual world coords: -10..10 x -10 .. 10
@@ -182,9 +190,9 @@ class ParticleSystem(Widget):
         with self.canvas:
             for i, particle in enumerate(self.particleList):
                 screen_coords = self.convert_particle_coordinates_to_screen_coordinates(particle)
-                Color(*self.colors[i % 8])
-                Ellipse(pos=(screen_coords[0]-particle.radius, screen_coords[1]-particle.radius),
-                         size=(2*particle.radius, 2*particle.radius))
+                Color(*particle.color)
+                Ellipse(pos=(screen_coords[0]-screen_coords[2], screen_coords[1]- screen_coords[3]),
+                         size=(2*screen_coords[2], 2*screen_coords[3]))
 
         self.canvas.ask_update()
 
@@ -213,13 +221,15 @@ class ParticleSystem(Widget):
         # Now update all radii so that they reflect the particle mass
         for p in self.particleList:
             radius = math.pow(p.mass / density / k, 1.0 / 3.0)
-            p.radius = round(max([radius, 1]))
+            p.radius = max([radius, 0.1])
+ 
 
 
     def add_particle(self, mass, pos, vel):
-        self.particleList.append(Particle(mass, pos, vel))
+        num_particles = len(self.particleList)
+        self.particleList.append(Particle(mass, pos, vel, self.colors[num_particles % 8]))
         self.recompute_radii()
-    #    self.canvas.add(Ellipse(pos=(1,1), size=(3,3)))
+
 
     def on_touch_down(self, touch):
         self.pause = True
