@@ -79,7 +79,7 @@ class ParticleSystem(Widget):
 
         # Define the colors we'll user for the particles
         self.pause = False
-        self.touch_center = None
+        self.touchCenterInParticleCoordinates = None
         self.old_d = None
         self.colors = Accent8
         for n, c in enumerate(self.colors):
@@ -254,31 +254,30 @@ class ParticleSystem(Widget):
 
     def on_touch_down(self, touch):
         self.pause = True
-        self.touch_center = self.convert_screen_coordinates_to_particle_coordinates(touch)
+        self.touchCenterInParticleCoordinates = self.convert_screen_coordinates_to_particle_coordinates(touch)
         with self.canvas:
             Color(1, 1, 0)
             d = min([p.radius for p in self.particleList])
-            self.draw_ellipse_from_particle_coords(self.touch_center, d)
+            self.draw_ellipse_from_particle_coords(self.touchCenterInParticleCoordinates, d)
             self.old_d = d
 
     def on_touch_up(self, touch):
         mass_max = max([p.mass for p in self.particleList])
         mass = mass_max * (float(self.old_d) / self.max_radius) ** 3
-        self.add_particle(mass, Vector2D(*self.touch_center), Vector2D(0, 0));
+        self.add_particle(mass, Vector2D(*self.touchCenterInParticleCoordinates), Vector2D(0, 0));
         self.pause = False
 
     def on_touch_move(self, touch):
         p_touch = self.convert_screen_coordinates_to_particle_coordinates(touch)
         with self.canvas:
-            d = min (math.sqrt((self.touch_center[0] - p_touch[0]) ** 2 + (self.touch_center[1] - p_touch[1]) ** 2),
+            d = min (math.sqrt((self.touchCenterInParticleCoordinates[0] - p_touch[0]) ** 2 + (self.touchCenterInParticleCoordinates[1] - p_touch[1]) ** 2),
                      2 * self.max_radius)
             if d > 0:
-                Color(0, 0, 0)
-                self.draw_ellipse_from_particle_coords(self.touch_center, self.old_d)
-
+                self.draw_particles();
+                
                 Color(1, 1, 0)
                 self.old_d = d
-                self.draw_ellipse_from_particle_coords(self.touch_center, d)
+                self.draw_ellipse_from_particle_coords(self.touchCenterInParticleCoordinates, d)
 
 
 class ParticleSystemApp(App):
