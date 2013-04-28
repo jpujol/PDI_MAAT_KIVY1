@@ -64,6 +64,31 @@ class Particle:
     def __str__(self):
         return "Mass:%s, pos:%s, vel:%s" % (self.mass, str(self.pos), str(self.vel))
 
+class Viewport:
+    def __init__(self, window_width, window_height, 
+        particleworld_x_center, particleworld_y_center, particleworld_width):
+        self.particleworld_x_center = particleworld_x_center;
+        self.particleworld_y_center = particleworld_y_center;
+        self.particleworld_width= particleworld_width;
+        self.particleworld_height = particleworld_width; # Will be updated later in setWindowDimensions
+        
+        self.setWindowDimensions(window_width, window_height);
+        
+    
+    def setWindowDimensions(self, width, height):
+        self.window_width = width;
+        self.window_height = height;
+        
+        # Update viewport so aspect ratio is 1:1 in WxH
+        # Design: we modify the y
+        self.particleworld_height = self.particleworld_width * height / width;
+        
+    #def convertXParticleCoordinatesToWindowCoordinates(self, x):
+        #window_coord_x = float(self.size[0]) * (x - self.particle_viewport[0]) / (self.particle_viewport[1] - self.particle_viewport[0])
+     #   return screen_coord_x
+        
+        
+        
 
 class ParticleSystem(Widget):
     def __init__(self, **kwargs):
@@ -71,6 +96,7 @@ class ParticleSystem(Widget):
         self.iteration = 1
         self.delta_time = 0.01;
         self.particleList = []
+        self.viewport = Viewport(100, 100, 0, 0, 20);
         self.particle_viewport = [-10.0, 10.0, -10.0, 10.0];  # xmin, xmax, ymin, ymax
 
         # This will be the radius for the most massive particle in the list
@@ -186,8 +212,16 @@ class ParticleSystem(Widget):
         return [particle_coord_x, particle_coord_y]
 
     def draw_particles(self):
-        self.canvas.clear()
+        
+        # Update viewport
+        # Keep 1:1 aspect ratio
+        #self.Viewport.
+        
+        self.canvas.clear();
+        
         with self.canvas:
+            
+            
 
         # Debug purposes: draw axis
         # Draw axis
@@ -218,9 +252,13 @@ class ParticleSystem(Widget):
         if self.pause:
             return
 
-        if (self.iteration % 10 == 0):
+        if (self.iteration % 100 == 0):
             Logger.info('Loop' + str(self.iteration))
 
+        #Logger.debug("WxH1 %d %d", self.width, self.height);
+        #Logger.debug("WxH2 %d %d", self.size[0], self.size[1]);
+        self.viewport.setWindowDimensions(self.width, self.height);
+        
         self.update_particles()
         self.draw_particles()
 
@@ -278,6 +316,11 @@ class ParticleSystem(Widget):
                 Color(1, 1, 0)
                 self.old_d = d
                 self.draw_ellipse_from_particle_coords(self.touchCenterInParticleCoordinates, d)
+                
+    def on_resize(width, height):
+        Logger.debug('*********************************') 
+        Logger.debug('Windows resize %d %d', width, height) 
+        Logger.debug('*********************************')
 
 
 class ParticleSystemApp(App):
